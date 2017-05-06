@@ -143,10 +143,10 @@ void DecreaseSpeed() {
 
 void Distance() {
   digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(1);
+  delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
   int duration = pulseIn(ECHO_PIN, HIGH);
-  int distance = (duration / 2) / 29.1;
+  int distance = duration / 58;
   if (distance <= 0) {
     Serial.println("Out of range");
   } else {
