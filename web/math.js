@@ -34,3 +34,21 @@ function findIntersection(p1, p2, p3, p4) {
     return null
   }
 }
+
+function getLineApprox(points) {
+  let xSum = 0
+  let sumY = 0
+  let xSum2 = 0
+  let xySum = 0
+  const n = points.length
+  for (let i = 0; i < n; i++) {
+    const p = points[i]
+    xSum += p.x
+    sumY += p.y
+    xSum2 += p.x * p.x
+    xySum += p.x * p.y
+  }
+  const a = (n * xySum - (xSum * sumY)) / (n * xSum2 - xSum * xSum)
+  const b = (sumY - a * xSum) / n
+  return {a, b}
+}

@@ -25,6 +25,7 @@ class Bot {
   tick() {
     const t = Date.now() / 1000
     const dt = t - this._lastTime
+    const lastState = this.state
     if (this._lastState !== this.state) {
       if (this[this.state]) {
         this._ticker = this[this.state]()
@@ -34,7 +35,7 @@ class Bot {
     } else {
       this._ticker(dt)
     }
-    this._lastState = this.state
+    this._lastState = lastState
     this._lastTime = t
   }
 
@@ -68,19 +69,11 @@ class Bot {
     if (!this.data[0]) {
       this.data[0] = []
     }
-    // if (!this.data[1]) {
-    //   this.data[1] = []
-    // }
     const dPoly = this.data[0]
-    const dPoly1 = this.data[1]
 
     const rand = (Math.random() - 0.5) * intersectionLength * 0.02
     intersection.add(new Point(rand * this.heading.x, rand * this.heading.y))
     dPoly.push(intersection)
-    if (intersection.p0 && intersection.p1) {
-      // dPoly1.push(intersection.p0)
-      // dPoly1.push(intersection.p1)
-    }
   }
 
   lookAround() {
@@ -90,7 +83,7 @@ class Bot {
 
     return function (dt) {
       if (totalRotation >= PI2) {
-        this.state = 'idle'
+        this.state = 'approximate'
         return
       }
       if (aroundCounter >= aroundInterval) {
@@ -98,11 +91,24 @@ class Bot {
         this.look()
       }
       this.pos.add(this.heading.clone().mulVal(this.speed * dt))
-      const dAngle = dt * 0.2
+      const dAngle = dt * 0.3
       this.angle += dAngle
       totalRotation += dAngle
       aroundCounter += dt
     }
+  }
+
+  approximate() {
+    const data = bot.data[0].slice(0, 50)
+    const {a, b} = getLineApprox(data)
+    let x
+    x = data[0].x
+    const p0 = new Point(x, x * a + b)
+    x = data[data.length - 1].x
+    const p1 = new Point(x, x * a + b)
+    this.p0 = p0
+    this.p1 = p1
+    return function () {}
   }
 
   render(ctx, t) {
@@ -130,6 +136,15 @@ class Bot {
 
     ctx.fillText(p.clone().round(1), pC.x + 20 * t.k, pC.y + 7)
     this._renderData()
+    if (this.p0 && this.p1) {
+      const p0 = t.apply(this.p0.clone())
+      const p1 = t.apply(this.p1.clone())
+      ctx.strokeStyle = '#000'
+      ctx.beginPath()
+      ctx.moveTo(p0.x, p0.y)
+      ctx.lineTo(p1.x, p1.y)
+      ctx.stroke()
+    }
   }
 
   _renderData() {
