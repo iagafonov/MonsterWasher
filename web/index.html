@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title></title>
+    <style>
+        body, html {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<script src="./Point.js"></script>
+<script src="./Bounds.js"></script>
+<script src="./Transform.js"></script>
+<script src="./math.js"></script>
+<script src="./PanZoom.js"></script>
+<script src="./Bot.js"></script>
+<script src="./room.js"></script>
+<script src="./draw.js"></script>
+<script>
+  // import Bot from './Bot'
+  const canvas = document.createElement('canvas')
+  const displayWidth = document.body.clientWidth
+  const displayHeight = document.body.clientHeight
+
+  canvas.setAttribute('width', displayWidth)
+  canvas.setAttribute('height', displayHeight)
+  document.body.appendChild(canvas)
+  const ctx = canvas.getContext('2d')
+  const canvasRect = canvas.getBoundingClientRect()
+
+  ctx.fillStyle = '#000'
+  ctx.lineWidth = 2
+  ctx.font = '16px Verdana'
+
+  const bot = new Bot(room)
+
+  const t = new Transform(Math.round(displayWidth / 2), Math.round(displayHeight / 2), 1)
+  const panZoomControl = new PanZoom(canvas, t)
+  const pointer = panZoomControl.pointer
+
+  function draw() {
+    ctx.clearRect(0, 0, displayWidth, displayHeight)
+
+    room.render(ctx, t)
+    bot.tick()
+    bot.render(ctx, t)
+    ctx.fillStyle = '#000'
+    ctx.fillText(pointer, 10, 20)
+
+    requestAnimationFrame(draw)
+  }
+
+  requestAnimationFrame(draw)
+
+</script>
+</body>
+</html>
