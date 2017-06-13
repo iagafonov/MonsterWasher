@@ -1,16 +1,16 @@
 class Bot {
   constructor(room) {
     this._room = room
-    this.pos = new Point(0, 0)
+    this.pos = new Point(15, 2)
     this.speed = 0
+    this.visionLength = 100
     this._angle = 0
     this.heading = new Point(Math.cos(this._angle), Math.sin(this._angle))
     this._lastTime = Date.now() / 1000
-    this._state = 'lookAround'
-    this._visionLength = 100
-    this._lookAroundInterval = 200 / 1000
-    this._lookAroundCounter = this._lookAroundInterval
-    this._data = []
+    this.state = 'lookAround'
+    this._lastState = null
+    this._ticker = function () {}
+    this.data = []
   }
 
   get angle() {
@@ -18,58 +18,91 @@ class Bot {
   }
 
   set angle(v) {
-    this._angle = v
+    this._angle = v > PI ? v - PI2 : v
     this.heading = new Point(Math.cos(v), Math.sin(v))
   }
 
   tick() {
     const t = Date.now() / 1000
     const dt = t - this._lastTime
-    this[this._state](dt)
+    if (this._lastState !== this.state) {
+      if (this[this.state]) {
+        this._ticker = this[this.state]()
+      } else {
+        this._ticker = function () {}
+      }
+    } else {
+      this._ticker(dt)
+    }
+    this._lastState = this.state
     this._lastTime = t
   }
 
   look() {
-    const vision = this.heading.clone().mulVal(this._visionLength)
-    this._room.geometry.forEach((polygon, index) => {
-      let intersection = null
-      let intersectionLength = 0
+    const visionPoint = this.heading.clone().mulVal(this.visionLength).add(this.pos)
+    let intersection = null
+    let intersectionLength = 0
+    this._room.geometry.forEach(polygon => {
       let p0 = polygon[polygon.length - 1]
       for (let i = 0, maxi = polygon.length; i < maxi; i++) {
         const p1 = polygon[i]
-        const int = findIntersection(this.pos, vision, p0, p1)
+        const int = findIntersection(this.pos, visionPoint, p0, p1)
         if (int) {
           const len = int.clone().sub(this.pos).length
           if (!intersection || intersectionLength > len) {
             intersection = int
             intersectionLength = len
+            intersection.p0 = p0
+            intersection.p1 = p1
           }
         }
         p0 = p1
       }
-      if (!intersection) {
-        intersection = vision.clone().add(this.pos)
-        intersectionLength = vision.length
-      }
-
-      if (!this._data[index]) {
-        this._data[index] = []
-      }
-      const dPoly = this._data[index]
-
-      intersection.add(new Point(Math.random() * intersectionLength * 0.01, Math.random() * intersectionLength * 0.01))
-      dPoly.push(intersection)
     })
+
+    if (!intersection) {
+      intersection = visionPoint.clone()
+      intersectionLength = visionPoint.length
+    }
+
+    if (!this.data[0]) {
+      this.data[0] = []
+    }
+    // if (!this.data[1]) {
+    //   this.data[1] = []
+    // }
+    const dPoly = this.data[0]
+    const dPoly1 = this.data[1]
+
+    const rand = (Math.random() - 0.5) * intersectionLength * 0.02
+    intersection.add(new Point(rand * this.heading.x, rand * this.heading.y))
+    dPoly.push(intersection)
+    if (intersection.p0 && intersection.p1) {
+      // dPoly1.push(intersection.p0)
+      // dPoly1.push(intersection.p1)
+    }
   }
 
-  lookAround(dt) {
-    if (this._lookAroundCounter >= this._lookAroundInterval) {
-      this._lookAroundCounter -= this._lookAroundInterval
-      this.look()
+  lookAround() {
+    let totalRotation = 0
+    const aroundInterval = 100 / 1000
+    let aroundCounter = aroundInterval
+
+    return function (dt) {
+      if (totalRotation >= PI2) {
+        this.state = 'idle'
+        return
+      }
+      if (aroundCounter >= aroundInterval) {
+        aroundCounter -= aroundInterval
+        this.look()
+      }
+      this.pos.add(this.heading.clone().mulVal(this.speed * dt))
+      const dAngle = dt * 0.2
+      this.angle += dAngle
+      totalRotation += dAngle
+      aroundCounter += dt
     }
-    this.pos.add(this.heading.clone().mulVal(this.speed * dt))
-    this.angle += dt * 0.3
-    this._lookAroundCounter += dt
   }
 
   render(ctx, t) {
@@ -77,7 +110,7 @@ class Bot {
     ctx.fillStyle = '#000000'
     const p = this.pos
     const pC = t.apply(p.clone())
-    const pA = t.apply(this.heading.clone().mulVal(20).add(p))
+    const pA = t.apply(this.heading.clone().mulVal(this.visionLength).add(p))
     ctx.beginPath()
     ctx.moveTo(pC.x, pC.y)
     ctx.lineTo(pA.x, pA.y)
@@ -100,10 +133,10 @@ class Bot {
   }
 
   _renderData() {
-    if (this._data && this._data[0] && this._data[0].length) {
+    if (this.data && this.data[0] && this.data[0].length) {
       ctx.strokeStyle = '#001242'
-      ctx.fillStyle = '#rgba(120, 120, 180, 0.5)'
-      drawPolygon(ctx, t, this._data)
+      ctx.fillStyle = 'rgba(120, 120, 180, 0.5)'
+      drawPolygon(ctx, t, this.data)
     }
   }
 }
